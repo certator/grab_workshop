@@ -5,7 +5,9 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+    ports:
+    - '${DEV_LOOPBACK_IP}:22:22'
     working_dir: /app
-    command: "bash shart-with-sshd.sh"
+    command: "bash start-with-sshd.sh"
     volumes:
     - .:/app
