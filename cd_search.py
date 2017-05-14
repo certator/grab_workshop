@@ -40,27 +40,37 @@ def search_brno_ostrava():
             continue
 
         for line in text.splitlines():
-            if 'var model = ' in line:
-                print('found model')
-                result = re.match(r'\s*var\s+model\s+=\s+(.*);', line).groups()
-                json = ujson.loads(result[0])
-                connection_result = []
-                for connection in json['list']:
-                    conn_dtime = None
-                    conn_atime = None
-                    for train in connection['trains']:
-                        dTime = datetime.datetime.strptime(train['depDate']+train['depTime'],  '%d.%m.%Y%H:%M')
-                        aTime = datetime.datetime.strptime(train['arrDate']+train['arrTime'],  '%d.%m.%Y%H:%M')
-                        if conn_dtime is not None:
-                            conn_dtime = min(conn_dtime, dTime)
-                        else:
-                            conn_dtime = dTime
-                        if conn_atime is not None:
-                            conn_atime = max(conn_atime, aTime)
-                        else:
-                            conn_atime = aTime
-                    conn_price = connection['price']['price'] / 100.0
-                    connection_result += [(conn_dtime, conn_atime, conn_price)]
+            if 'var model = ' not in line:
+                continue
+
+            print('found model')
+            result = re.match(r'\s*var\s+model\s+=\s+(.*);', line).groups()
+            json = ujson.loads(result[0])
+
+            connection_result = []
+            for connection in json['list']:
+                conn_dtime = []
+                conn_atime = []
+                for train in connection['trains']:
+                    dTime = datetime.datetime.strptime(train['depDate']+train['depTime'],  '%d.%m.%Y%H:%M')
+                    aTime = datetime.datetime.strptime(train['arrDate']+train['arrTime'],  '%d.%m.%Y%H:%M')
+                    conn_dtime = [min(conn_dtime + [dTime])]
+                    conn_atime = [max(conn_atime + [aTime])]
+                conn_price = connection['price']['price'] / 100.0
+                connection_result += [(conn_dtime[0], conn_atime[0], conn_price)]
+
+            # g.setup(post={
+            #     'guid': json['guid'],
+            #     'SearchType': '2',
+            #     'pageType': '0',
+            #     'refreshID': json['list'][0]['id'],
+            #     'prevID': json['list'][1]['id'],
+            #     'nextID': json['list'][-2]['id'],
+            #     'priceType': '0',
+            #     'sortType': '0'
+            # })
+            # g.go('https://www.cd.cz/spojeni-a-jizdenka/getconnectionlist/')
+
     return connection_result
 
 
