@@ -1,0 +1,11 @@
+version: "2"
+services:
+  app:
+    hostname: app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    working_dir: /app
+    command: "bash shart-with-sshd.sh"
+    volumes:
+    - .:/app
