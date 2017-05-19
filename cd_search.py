@@ -8,6 +8,27 @@ import re
 from grab import Grab
 
 
+my_date = "20.05.2017"
+my_datetime = datetime.datetime.strptime(my_date,  '%d.%m.%Y')
+
+
+def fill_connection_result(json):
+    connection_result = []
+    for connection in json['list']:
+        conn_id = connection['id']
+        conn_dtime = []
+        conn_atime = []
+        for train in connection['trains']:
+            dTime = datetime.datetime.strptime(train['depDate']+train['depTime'],  '%d.%m.%Y%H:%M')
+            aTime = datetime.datetime.strptime(train['arrDate']+train['arrTime'],  '%d.%m.%Y%H:%M')
+            conn_dtime = [min(conn_dtime + [dTime])]
+            conn_atime = [max(conn_atime + [aTime])]
+        conn_price = connection['price']['price'] / 100.0
+        if my_datetime.date() == conn_dtime[0].date():
+            connection_result += [(conn_id, conn_dtime[0], conn_atime[0], conn_price)]
+    return connection_result
+
+
 def search_brno_ostrava():
     g = Grab()
     g.setup(
@@ -22,8 +43,8 @@ def search_brno_ostrava():
                     "listId": 1,
                     "name": "Ostrava"
                 },
-                "date": "15.05.2017",
-                "time": "09:00",
+                "date": my_date,
+                "time": "00:00",
                 "isAdvanced": False,
                 "doSearch": True,
                 "passengers": []
@@ -47,29 +68,27 @@ def search_brno_ostrava():
             result = re.match(r'\s*var\s+model\s+=\s+(.*);', line).groups()
             json = ujson.loads(result[0])
 
-            connection_result = []
-            for connection in json['list']:
-                conn_dtime = []
-                conn_atime = []
-                for train in connection['trains']:
-                    dTime = datetime.datetime.strptime(train['depDate']+train['depTime'],  '%d.%m.%Y%H:%M')
-                    aTime = datetime.datetime.strptime(train['arrDate']+train['arrTime'],  '%d.%m.%Y%H:%M')
-                    conn_dtime = [min(conn_dtime + [dTime])]
-                    conn_atime = [max(conn_atime + [aTime])]
-                conn_price = connection['price']['price'] / 100.0
-                connection_result += [(conn_dtime[0], conn_atime[0], conn_price)]
+            connection_result = fill_connection_result(json)
 
-            # g.setup(post={
-            #     'guid': json['guid'],
-            #     'SearchType': '2',
-            #     'pageType': '0',
-            #     'refreshID': json['list'][0]['id'],
-            #     'prevID': json['list'][1]['id'],
-            #     'nextID': json['list'][-2]['id'],
-            #     'priceType': '0',
-            #     'sortType': '0'
-            # })
-            # g.go('https://www.cd.cz/spojeni-a-jizdenka/getconnectionlist/')
+            current_result = None
+
+            while (current_result != []):
+                g.setup(post={
+                  'guid': json['guid'],
+                  'SearchType': '2',
+                  'pageType': '0',
+                  'refreshID': json['list'][0]['id'],
+                  'prevID': json['list'][1]['id'],
+                  'nextID': json['list'][-2]['id'],
+                  'priceType': '0',
+                  'sortType': '0'
+                })
+                g.go('https://www.cd.cz/spojeni-a-jizdenka/getconnectionlist/')
+                json = g.response.json
+                current_result = fill_connection_result(json)
+                connection_result += current_result
+
+    list(set(connection_result))
 
     return connection_result
 
